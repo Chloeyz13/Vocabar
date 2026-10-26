@@ -8,6 +8,7 @@ struct TranslationPopoverView: View {
     let onClose: () -> Void
 
     @State private var translation = ""
+    @State private var translationFailed = false
 
     private let configuration = TranslationSession.Configuration(
         source: Locale.Language(identifier: "en"),
@@ -28,7 +29,7 @@ struct TranslationPopoverView: View {
                     onSave(sourceText, translation)
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(translation.isEmpty)
+                .disabled(translation.isEmpty || translationFailed)
             }
         }
         .padding(16)
@@ -40,6 +41,7 @@ struct TranslationPopoverView: View {
                 translation = response.targetText
             } catch {
                 translation = "Translation unavailable. Check the Chinese language pack in System Settings."
+                translationFailed = true
             }
         }
     }

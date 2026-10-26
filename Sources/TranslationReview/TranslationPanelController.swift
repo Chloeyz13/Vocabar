@@ -9,6 +9,7 @@ final class TranslationPanelController {
     private let container: ModelContainer
     private var hotKey: HotKey?
     private var panel: NSPanel?
+    private var isTranslating = false
 
     init(container: ModelContainer) {
         self.container = container
@@ -19,6 +20,10 @@ final class TranslationPanelController {
     }
 
     private func translateSelection() async {
+        guard !isTranslating else { return }
+        isTranslating = true
+        defer { isTranslating = false }
+
         print("[TranslationReview] hotkey fired")
         guard SelectionService.isTrusted(prompt: true) else {
             print("[TranslationReview] Accessibility not granted")
@@ -38,6 +43,8 @@ final class TranslationPanelController {
     }
 
     private func show(_ text: String) {
+        panel?.orderOut(nil)
+
         let view = TranslationPopoverView(
             sourceText: text,
             onSave: { [weak self] source, translation in self?.save(source, translation) },
@@ -64,6 +71,11 @@ final class TranslationPanelController {
 
     private func save(_ source: String, _ translation: String) {
         container.mainContext.insert(Card(sourceText: source, translation: translation))
+        do {
+            try container.mainContext.save()
+        } catch {
+            print("[TranslationReview] failed to save card: \(error)")
+        }
         panel?.orderOut(nil)
     }
 }

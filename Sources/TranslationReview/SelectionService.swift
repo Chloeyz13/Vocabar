@@ -24,8 +24,11 @@ enum SelectionService {
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
               let focused else { return nil }
 
+        guard CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
+        let focusedElement = focused as! AXUIElement
+
         var selected: AnyObject?
-        guard AXUIElementCopyAttributeValue(focused as! AXUIElement, kAXSelectedTextAttribute as CFString, &selected) == .success else {
+        guard AXUIElementCopyAttributeValue(focusedElement, kAXSelectedTextAttribute as CFString, &selected) == .success else {
             return nil
         }
         return selected as? String
@@ -33,7 +36,7 @@ enum SelectionService {
 
     private static func selectedTextViaCopy() async -> String? {
         let pasteboard = NSPasteboard.general
-        let previousText = pasteboard.string(forType: .string)
+        let previousItems = pasteboard.pasteboardItems ?? []
         let previousCount = pasteboard.changeCount
 
         // Give the user's ⌥⌘T modifiers time to release so they don't leak into the ⌘C.
@@ -45,10 +48,20 @@ enum SelectionService {
         guard pasteboard.changeCount != previousCount else { return nil }
         let copied = pasteboard.string(forType: .string)
 
-        // Restore the user's previous clipboard contents.
+        // Restore the user's previous clipboard contents, preserving every type (not just
+        // plain text), so a copied image/file/RTF item isn't lost by this fallback.
         pasteboard.clearContents()
-        if let previousText {
-            pasteboard.setString(previousText, forType: .string)
+        let restoredItems = previousItems.map { item -> NSPasteboardItem in
+            let restored = NSPasteboardItem()
+            for type in item.types {
+                if let data = item.data(forType: type) {
+                    restored.setData(data, forType: type)
+                }
+            }
+            return restored
+        }
+        if !restoredItems.isEmpty {
+            pasteboard.writeObjects(restoredItems)
         }
         return copied
     }
