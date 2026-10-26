@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "vocabar",
+  "project_id": "1a934115-7d41-4d43-8b85-dfa76b65b9d8"
+}
