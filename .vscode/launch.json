@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:menu bar}",
+            "name": "Debug TranslationReview",
+            "target": "TranslationReview",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug TranslationReview"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:menu bar}",
+            "name": "Release TranslationReview",
+            "target": "TranslationReview",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release TranslationReview"
+        }
+    ]
+}
