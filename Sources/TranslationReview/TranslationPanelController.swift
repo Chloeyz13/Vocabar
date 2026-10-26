@@ -73,9 +73,11 @@ final class TranslationPanelController {
         container.mainContext.insert(Card(sourceText: source, translation: translation))
         do {
             try container.mainContext.save()
+            panel?.orderOut(nil)
         } catch {
             print("[TranslationReview] failed to save card: \(error)")
+            container.mainContext.rollback()
+            // Leave the panel open on failure so the translation isn't lost and the user can retry.
         }
-        panel?.orderOut(nil)
     }
 }

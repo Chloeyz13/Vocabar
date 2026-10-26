@@ -36,7 +36,15 @@ enum SelectionService {
 
     private static func selectedTextViaCopy() async -> String? {
         let pasteboard = NSPasteboard.general
-        let previousItems = pasteboard.pasteboardItems ?? []
+        // Snapshot each type's data now, before the synthetic ⌘C overwrites the pasteboard —
+        // the NSPasteboardItem references themselves go stale once the pasteboard changes.
+        let previousItems: [[NSPasteboard.PasteboardType: Data]] = (pasteboard.pasteboardItems ?? []).map { item in
+            var dataByType: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types {
+                dataByType[type] = item.data(forType: type)
+            }
+            return dataByType
+        }
         let previousCount = pasteboard.changeCount
 
         // Give the user's ⌥⌘T modifiers time to release so they don't leak into the ⌘C.
@@ -51,12 +59,10 @@ enum SelectionService {
         // Restore the user's previous clipboard contents, preserving every type (not just
         // plain text), so a copied image/file/RTF item isn't lost by this fallback.
         pasteboard.clearContents()
-        let restoredItems = previousItems.map { item -> NSPasteboardItem in
+        let restoredItems = previousItems.map { dataByType -> NSPasteboardItem in
             let restored = NSPasteboardItem()
-            for type in item.types {
-                if let data = item.data(forType: type) {
-                    restored.setData(data, forType: type)
-                }
+            for (type, data) in dataByType {
+                restored.setData(data, forType: type)
             }
             return restored
         }
