@@ -47,7 +47,7 @@ final class TranslationPanelController {
 
         let view = TranslationPopoverView(
             sourceText: text,
-            onSave: { [weak self] source, translation in self?.save(source, translation) },
+            onSave: { [weak self] source, translation, pronunciation in self?.save(source, translation, pronunciation) },
             onClose: { [weak self] in self?.panel?.orderOut(nil) }
         )
 
@@ -69,8 +69,8 @@ final class TranslationPanelController {
         self.panel = panel
     }
 
-    private func save(_ source: String, _ translation: String) {
-        container.mainContext.insert(Card(sourceText: source, translation: translation))
+    private func save(_ source: String, _ translation: String, _ pronunciation: String?) {
+        container.mainContext.insert(Card(sourceText: source, translation: translation, pronunciation: pronunciation))
         do {
             try container.mainContext.save()
             panel?.orderOut(nil)

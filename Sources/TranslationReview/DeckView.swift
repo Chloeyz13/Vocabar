@@ -15,7 +15,7 @@ struct DeckView: View {
             List {
                 ForEach(cards) { card in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(card.sourceText).font(.headline)
+                        SpeakableWordView(text: card.sourceText, pronunciation: card.pronunciation, pronunciationFont: .caption)
                         Text(card.translation).font(.subheadline)
                         Text(createdText(for: card))
                             .font(.caption)

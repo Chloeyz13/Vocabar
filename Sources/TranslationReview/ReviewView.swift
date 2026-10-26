@@ -14,8 +14,7 @@ struct ReviewView: View {
                 Text("\(due.count) due")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(card.sourceText)
-                    .font(.headline)
+                SpeakableWordView(text: card.sourceText, pronunciation: card.pronunciation)
                     .multilineTextAlignment(.center)
                 if revealed {
                     Text(card.translation)
