@@ -33,5 +33,10 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </plist>
 PLIST
 
-codesign --force --sign - "$APP"
-echo "Installed $APP"
+# Sign with a stable identity when available: ad-hoc signing ("-") gets a new
+# hash every build, which silently revokes the Accessibility grant on each install.
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Apple Development/ {print $2; exit}')
+codesign --force --sign "${IDENTITY:--}" "$APP"
+echo "Installed $APP (signed: ${IDENTITY:-ad-hoc})"
+
+open "$APP"
