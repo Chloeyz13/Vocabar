@@ -9,7 +9,7 @@ bd ready              # Find available work
 bd show <id>          # View issue details
 bd update <id> --claim  # Claim work atomically
 bd close <id>         # Complete work
-bd sync               # Sync with git
+bd export -o .beads/issues.jsonl  # Export issues to JSONL (back up in git)
 ```
 
 ## Non-Interactive Shell Commands
@@ -101,13 +101,16 @@ bd close bd-42 --reason "Completed" --json
    - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
 5. **Complete**: `bd close <id> --reason "Done"`
 
-### Auto-Sync
+### Syncing with git
 
-bd automatically syncs with git:
+The installed bd (0.59.0, Dolt backend) has **no `bd sync` or `bd import` command** and does not auto-export. Issues live in a local Dolt database (`.beads/dolt/`, not tracked by git). To keep a backup of issue state in git, export and commit it:
 
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
+```bash
+bd export -o .beads/issues.jsonl
+git add .beads/issues.jsonl
+```
+
+The JSONL is a one-way backup/record, not a round-trip sync.
 
 ### Important Rules
 
@@ -133,7 +136,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
+   bd export -o .beads/issues.jsonl   # commit it if it changed
    git push
    git status  # MUST show "up to date with origin"
    ```
