@@ -26,6 +26,8 @@ struct DeckView: View {
                     for index in offsets {
                         context.delete(cards[index])
                     }
+                    // Explicit save: autosave is lazy, and the backup writes on save.
+                    try? context.save()
                 }
             }
             .frame(maxHeight: .infinity)

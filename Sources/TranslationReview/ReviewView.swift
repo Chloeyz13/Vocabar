@@ -4,6 +4,7 @@ import SwiftData
 /// Review tab: shows one due card at a time.
 struct ReviewView: View {
     @Query(sort: \Card.nextReviewAt) private var cards: [Card]
+    @Environment(\.modelContext) private var context
     @State private var revealed = false
 
     private var due: [Card] { cards.filter { $0.isDue() } }
@@ -36,6 +37,8 @@ struct ReviewView: View {
 
     private func grade(_ card: Card, _ grade: ReviewGrade) {
         card.review(grade)
+        // Explicit save: autosave is lazy, and the backup writes on save.
+        try? context.save()
         revealed = false
     }
 }
