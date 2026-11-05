@@ -12,6 +12,9 @@ See DESIGN.md for the plan.
 5. Select English text in any app and press ⌥⌘T. Click "Save to deck" to store it.
 6. Click the menu bar icon to review cards that are due.
 
+## Install without Xcode
+Run `./install.sh` to build a release copy as `/Applications/TranslationReview.app` (it replaces any running copy). To start it automatically at login: System Settings → General → Login Items → "+" → choose Translation Review. Note: after reinstalling you may need to re-grant Accessibility permission (the ad-hoc code signature changes with each build).
+
 ## Notes
 - The first translation may prompt you to download the English → Simplified Chinese language pack.
 - Run the tests with ⌘U.
