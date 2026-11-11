@@ -24,24 +24,24 @@ final class TranslationPanelController {
         isTranslating = true
         defer { isTranslating = false }
 
-        // NSLog instead of print: stdout of a Finder-launched app goes nowhere,
-        // NSLog lands in the unified log (`log show --predicate 'process == "TranslationReview"'`).
-        NSLog("[TranslationReview] hotkey fired")
+        // plog, not print: stdout of a Finder-launched app goes nowhere; plog lands readable
+        // in the unified log (`log show --predicate 'process == "TranslationReview"'`).
+        plog("hotkey fired")
         guard SelectionService.isTrusted(prompt: true) else {
-            NSLog("[TranslationReview] Accessibility not granted")
+            plog("Accessibility not granted")
             showAccessibilityAlert()
             return
         }
         guard let raw = await SelectionService.selectedText() else {
-            NSLog("[TranslationReview] could not read selected text")
+            plog("could not read selected text")
             return
         }
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, text.count <= 500 else {
-            NSLog("[TranslationReview] selection empty or longer than 500 characters")
+            plog("selection empty or longer than 500 characters")
             return
         }
-        NSLog("[TranslationReview] showing translation")
+        plog("showing translation")
         show(text)
     }
 
@@ -94,7 +94,7 @@ final class TranslationPanelController {
             try container.mainContext.save()
             panel?.orderOut(nil)
         } catch {
-            NSLog("[TranslationReview] failed to save card: %@", String(describing: error))
+            plog("failed to save card: \(error)")
             container.mainContext.rollback()
             // Leave the panel open on failure so the translation isn't lost and the user can retry.
         }
