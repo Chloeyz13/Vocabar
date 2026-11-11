@@ -38,17 +38,13 @@ enum SelectionService {
         guard CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
         let focusedElement = focused as! AXUIElement
 
-        var role: AnyObject?
-        AXUIElementCopyAttributeValue(focusedElement, kAXRoleAttribute as CFString, &role)
-        let roleName = role as? String ?? "?"
-
         var selected: AnyObject?
         let selErr = AXUIElementCopyAttributeValue(focusedElement, kAXSelectedTextAttribute as CFString, &selected)
         guard selErr == .success else {
-            plog("AX: focused \(roleName) has no selected-text attribute (err \(selErr.rawValue))")
+            plog("AX: focused element has no selected-text attribute (err \(selErr.rawValue))")
             return nil
         }
-        plog("AX: focused \(roleName) selected-text length \((selected as? String)?.count ?? -1)")
+        plog("AX: selected-text length \((selected as? String)?.count ?? -1)")
         return selected as? String
     }
 
@@ -74,16 +70,7 @@ enum SelectionService {
             Date() < releaseDeadline {
             try? await Task.sleep(for: .milliseconds(20))
         }
-        // Invoke the frontmost app's Edit > Copy menu item via Accessibility — the same code
-        // path as a real ⌘C. Terminal.app discards synthetic ⌘C keystrokes entirely (both
-        // HID-tap and pid-targeted), but honors a menu press. Keystroke injection remains
-        // the fallback for apps without a Copy menu item.
-        if let front = NSWorkspace.shared.frontmostApplication,
-           pressCopyMenuItem(pid: front.processIdentifier) {
-            plog("pressed Copy menu item in \(front.localizedName ?? "?")")
-        } else {
-            postCommandC()
-        }
+        postCommandC()
 
         // Poll for the frontmost app to update the clipboard; a busy app (e.g. a terminal
         // mid-redraw) can take longer than a fixed 150ms.
@@ -120,35 +107,6 @@ enum SelectionService {
         return copied
     }
 
-    private static func axAttribute(_ element: AXUIElement, _ name: String) -> AnyObject? {
-        var value: AnyObject?
-        guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return nil }
-        return value
-    }
-
-    private static func axChildren(_ element: AXUIElement) -> [AXUIElement] {
-        axAttribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? []
-    }
-
-    /// Finds the menu item whose shortcut is plain ⌘C (matched by shortcut, not title,
-    /// so localization doesn't matter) and presses it.
-    private static func pressCopyMenuItem(pid: pid_t) -> Bool {
-        let app = AXUIElementCreateApplication(pid)
-        guard let menuBar = axAttribute(app, kAXMenuBarAttribute) else { return false }
-        let barItems = axChildren(menuBar as! AXUIElement)
-        for barItem in barItems {
-            for menu in axChildren(barItem) {
-                for item in axChildren(menu) {
-                    guard axAttribute(item, kAXMenuItemCmdCharAttribute) as? String == "C",
-                          (axAttribute(item, kAXMenuItemCmdModifiersAttribute) as? Int ?? -1) == 0 // 0 = ⌘ alone
-                    else { continue }
-                    return AXUIElementPerformAction(item, kAXPressAction as CFString) == .success
-                }
-            }
-        }
-        return false
-    }
-
     private static func postCommandC() {
         let source = CGEventSource(stateID: .combinedSessionState)
         let keyC: CGKeyCode = 0x08 // kVK_ANSI_C
@@ -156,17 +114,9 @@ enum SelectionService {
         let up = CGEvent(keyboardEventSource: source, virtualKey: keyC, keyDown: false)
         down?.flags = .maskCommand
         up?.flags = .maskCommand
-        // Post to the frontmost app's process rather than the HID stream: Terminal.app
-        // ignores tap-injected keystrokes (keystroke injection into a terminal would be
-        // command injection) but accepts process-targeted events.
-        if let front = NSWorkspace.shared.frontmostApplication {
-            plog("posting ⌘C to \(front.localizedName ?? "?") (pid \(front.processIdentifier))")
-            down?.postToPid(front.processIdentifier)
-            up?.postToPid(front.processIdentifier)
-        } else {
-            plog("no frontmost app; posting ⌘C to HID stream")
-            down?.post(tap: .cghidEventTap)
-            up?.post(tap: .cghidEventTap)
-        }
+        // Terminal.app ignores synthetic keystrokes; the caller's existing-clipboard
+        // fallback covers that case, since TUIs there auto-copy the selection anyway.
+        down?.post(tap: .cghidEventTap)
+        up?.post(tap: .cghidEventTap)
     }
 }
