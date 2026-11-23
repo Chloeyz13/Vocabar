@@ -4,6 +4,7 @@ import AppKit
 
 @main
 struct TranslationReviewApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let container: ModelContainer
     private let panelController: TranslationPanelController
     @MainActor private static var backupObserver: NSObjectProtocol?
@@ -14,6 +15,7 @@ struct TranslationReviewApp: App {
         let container = Self.makeContainer()
         self.container = container
         self.panelController = TranslationPanelController(container: container)
+        AppDelegate.container = container
 
         Self.restoreFromBackupIfStoreEmpty(container)
         Backup.writeAll(from: container)
@@ -83,13 +85,20 @@ struct TranslationReviewApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuContentView()
-                .modelContainer(container)
-        } label: {
-            MenuBarLabel()
-                .modelContainer(container)
-        }
-        .menuBarExtraStyle(.window)
+        // The menu bar icon is a hand-managed NSStatusItem (see StatusItemController),
+        // because MenuBarExtra has no right-click hook.
+        Settings { EmptyView() }
+    }
+}
+
+/// Creates the status item after launch, once the status bar is available.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    static var container: ModelContainer?
+    private var statusItemController: StatusItemController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        guard let container = Self.container else { return }
+        statusItemController = StatusItemController(container: container)
     }
 }
