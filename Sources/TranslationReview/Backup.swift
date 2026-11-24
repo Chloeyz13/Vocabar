@@ -41,6 +41,10 @@ struct CardBackup: Codable, Equatable {
     let sourceText: String
     let translation: String
     let pronunciation: String?
+    // Optional so backup lines written before enrichment existed still decode.
+    let partOfSpeech: String?
+    let examples: String?
+    let usageNote: String?
     let createdAt: Date
     let stage: Int
     let nextReviewAt: Date
@@ -50,13 +54,17 @@ struct CardBackup: Codable, Equatable {
         sourceText = card.sourceText
         translation = card.translation
         pronunciation = card.pronunciation
+        partOfSpeech = card.partOfSpeech
+        examples = card.examples
+        usageNote = card.usageNote
         createdAt = card.createdAt
         stage = card.stage
         nextReviewAt = card.nextReviewAt
     }
 
     func makeCard() -> Card {
-        let card = Card(sourceText: sourceText, translation: translation, pronunciation: pronunciation, now: createdAt)
+        let card = Card(sourceText: sourceText, translation: translation, pronunciation: pronunciation,
+                        partOfSpeech: partOfSpeech, examples: examples, usageNote: usageNote, now: createdAt)
         card.id = id
         card.stage = stage
         card.nextReviewAt = nextReviewAt
