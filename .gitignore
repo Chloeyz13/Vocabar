@@ -10,3 +10,5 @@ xcuserdata/
 .dolt/
 *.db
 .beads/dolt-monitor.pid.lock
+.beads/
+.vscode/
