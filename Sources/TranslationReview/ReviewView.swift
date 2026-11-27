@@ -21,15 +21,36 @@ struct ReviewView: View {
                 SpeakableWordView(text: card.sourceText, pronunciation: card.pronunciation)
                     .multilineTextAlignment(.center)
                 if revealed {
-                    Text(card.translation)
-                        .font(.title3)
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            Text(card.translation)
+                                .font(.title3)
+                            if let pos = card.partOfSpeech, !pos.isEmpty {
+                                Text(pos)
+                                    .font(.subheadline).italic()
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let examples = card.examples, !examples.isEmpty {
+                                Text(examples)
+                                    .font(.callout)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            if let note = card.usageNote, !note.isEmpty {
+                                Text("💡 \(note)")
+                                    .font(.caption)
+                                    .padding(8)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
+                    }
                     HStack {
                         Button("Again ↓") { grade(card, .again) }
                             .keyboardShortcut(.defaultAction)
                         Button("Got it →") { grade(card, .gotIt) }
                     }
                 } else {
-                    Button("Show translation") { revealed = true }
+                    Button("Show translation") { reveal(card) }
                         .keyboardShortcut(.defaultAction)
                 }
             } else {
@@ -56,9 +77,27 @@ struct ReviewView: View {
         if revealed {
             grade(card, .again)
         } else {
-            revealed = true
+            reveal(card)
         }
         return .handled
+    }
+
+    private func reveal(_ card: Card) {
+        revealed = true
+        backfillIfNeeded(card)
+    }
+
+    /// Cards saved before enrichment existed (or saved offline) fetch it on first reveal.
+    private func backfillIfNeeded(_ card: Card) {
+        guard card.partOfSpeech == nil, card.examples == nil else { return }
+        Task {
+            guard let e = try? await EnrichmentService.enrich(card.sourceText) else { return }
+            card.partOfSpeech = e.partOfSpeech
+            card.examples = e.examplesText
+            card.usageNote = e.usageNote
+            if card.pronunciation == nil { card.pronunciation = e.ipaOrNil }
+            try? context.save()
+        }
     }
 
     private func gotIt() -> KeyPress.Result {

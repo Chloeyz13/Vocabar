@@ -5,14 +5,16 @@ import HotKey
 
 /// Owns the global hotkey and the floating panel that shows the translation.
 @MainActor
-final class TranslationPanelController {
+final class TranslationPanelController: NSObject, NSWindowDelegate {
     private let container: ModelContainer
     private var hotKey: HotKey?
     private var panel: NSPanel?
+    private var panelTopLeft: NSPoint?
     private var isTranslating = false
 
     init(container: ModelContainer) {
         self.container = container
+        super.init()
         hotKey = HotKey(key: .t, modifiers: [.command, .option])
         hotKey?.keyDownHandler = { [weak self] in
             Task { await self?.translateSelection() }
@@ -66,7 +68,7 @@ final class TranslationPanelController {
 
         let view = TranslationPopoverView(
             sourceText: text,
-            onSave: { [weak self] source, translation, pronunciation in self?.save(source, translation, pronunciation) },
+            onSave: { [weak self] card in self?.save(card) },
             onClose: { [weak self] in self?.panel?.orderOut(nil) }
         )
 
@@ -81,15 +83,36 @@ final class TranslationPanelController {
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.hidesOnDeactivate = false // app is a background (accessory) app, so it is never 'active'
-        panel.contentView = NSHostingView(rootView: view)
+        // Content grows as enrichment arrives; preferredContentSize keeps the panel sized to fit.
+        let hosting = NSHostingController(rootView: view)
+        hosting.sizingOptions = [.preferredContentSize]
+        panel.contentViewController = hosting
         panel.center()
+        // Windows grow upward from their bottom-left origin, so a panel that gains
+        // content (enrichment arriving) would push its top off-screen. Pin the top-left
+        // corner instead and re-pin on every resize, so it grows downward.
+        panel.delegate = self
+        panelTopLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
         self.panel = panel
     }
 
-    private func save(_ source: String, _ translation: String, _ pronunciation: String?) {
-        container.mainContext.insert(Card(sourceText: source, translation: translation, pronunciation: pronunciation))
+    func windowDidResize(_ notification: Notification) {
+        guard let panel, (notification.object as? NSPanel) === panel,
+              var topLeft = panelTopLeft,
+              let visible = (panel.screen ?? NSScreen.main)?.visibleFrame else { return }
+        // Keep the whole panel inside the visible screen: top below the menu bar,
+        // and if it has grown past the bottom, raise the top just enough to fit.
+        topLeft.y = min(topLeft.y, visible.maxY)
+        if topLeft.y - panel.frame.height < visible.minY {
+            topLeft.y = min(visible.minY + panel.frame.height, visible.maxY)
+        }
+        panel.setFrameTopLeftPoint(topLeft)
+    }
+
+    private func save(_ card: Card) {
+        container.mainContext.insert(card)
         do {
             try container.mainContext.save()
             panel?.orderOut(nil)
